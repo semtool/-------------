@@ -7,8 +7,7 @@ public class ProtectedSpace : MonoBehaviour
 {
     [SerializeField] private AudioSource _audioSource;
 
-    private Coroutine _coroutineForIncreasing;
-    private Coroutine _coroutineForDecreasing;
+    private Coroutine _coroutineForChanging;
     private float _minVolue = 0f;
     private float _currentVolue = 0f;
     private float _maxVolue = 1f;
@@ -17,21 +16,13 @@ public class ProtectedSpace : MonoBehaviour
     private float _currentPitch = 1f;
     private float _maxPitch = 2f;
 
-    private void Awake()
-    {
-        _audioSource = GetComponent<AudioSource>();
-    }
-
     private void OnTriggerEnter(Collider other)
     {
-        if (other.gameObject.TryGetComponent(out Robber robber))
+        if (HasDetectedRobber(other))
         {
-            if (_coroutineForDecreasing != null)
-            {
-                StopCoroutine(_coroutineForDecreasing);
-            }
+            DeactivateCoroutine();
 
-            _coroutineForIncreasing = StartCoroutine(ChangeSoundUp());
+            ActivateCoroutine(_maxVolue, _maxPitch);
 
             _audioSource.loop = true;
 
@@ -44,47 +35,52 @@ public class ProtectedSpace : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (other.gameObject.TryGetComponent(out Robber robber))
+        if (HasDetectedRobber(other))
         {
-            if (_coroutineForIncreasing != null)
-            {
-                StopCoroutine(_coroutineForIncreasing);
-            }
+            DeactivateCoroutine();
 
-            _coroutineForDecreasing = StartCoroutine(ChangeSoundDown());
+            ActivateCoroutine(_minVolue, _minPitch);
         }
     }
 
-    IEnumerator ChangeSoundUp()
+    IEnumerator ChangeSound(float volueLimit, float pitchLimit)
     {
         while (true)
         {
-            var wait = new WaitForSeconds(0);
+            yield return null;
 
-            yield return wait;
-
-            ChangeSound(_maxVolue, _maxPitch);
+            ChangeVolue(volueLimit);
+            ChangePitch(pitchLimit);
         }
     }
 
-    IEnumerator ChangeSoundDown()
+    private bool HasDetectedRobber(Collider other)
     {
-        while (true)
+        return other.gameObject.TryGetComponent(out Robber robber);
+    }
+
+    private void ActivateCoroutine(float volueLimit, float pitchLimit)
+    {
+        _coroutineForChanging = StartCoroutine(ChangeSound(volueLimit, pitchLimit));
+    }
+
+    private void DeactivateCoroutine()
+    {
+        if (_coroutineForChanging != null)
         {
-            var wait = new WaitForSeconds(0);
-
-            yield return wait;
-
-            ChangeSound(_minVolue, _minPitch);
+            StopCoroutine(_coroutineForChanging);
         }
     }
 
-    private void ChangeSound(float volueLimit, float pitchLimit)
+    private void ChangeVolue(float volueLimit)
     {
         _currentVolue = Mathf.MoveTowards(_currentVolue, volueLimit, _spetOfIcrease * Time.deltaTime);
-        _currentPitch = Mathf.MoveTowards(_currentPitch, pitchLimit, _spetOfIcrease * Time.deltaTime);
-
         _audioSource.volume = _currentVolue;
+    }
+
+    private void ChangePitch(float pitchLimit)
+    {
+        _currentPitch = Mathf.MoveTowards(_currentPitch, pitchLimit, _spetOfIcrease * Time.deltaTime);
         _audioSource.pitch = _currentPitch;
     }
 }
